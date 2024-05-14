@@ -4,14 +4,17 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config/keys");
 
 const UserController = {
-  async create(req, res) {
+  async create(req, res, next) {
     try {
+      if (!req.body.password) {
+        return res.status(400).send({ message: "Rellena la contraseña" });
+      }
       const password = await bcrypt.hash(req.body.password, 10);
       const user = await User.create({ ...req.body, password, role: "user" });
       res.status(201).send(user);
     } catch (error) {
       console.error(error);
-      res.status(500).send(error);
+      next(error);
     }
   },
   async login(req, res) {
@@ -48,6 +51,21 @@ const UserController = {
       res.status(500).send({
         message: "Hubo un problema al intentar desconectar al usuario",
       });
+    }
+  },
+  async getInfo(req, res) {
+    try {
+      const user = await User.findById(req.user._id)
+        .populate({
+          path: "orderIds",
+          populate: {
+            path: "productIds",
+          },
+        })
+        .populate("wishList");
+      res.send(user);
+    } catch (error) {
+      console.error(error);
     }
   },
 };
